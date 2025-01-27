@@ -76,7 +76,7 @@ def add_participant(wallet):
         save_auth_data(wallet)
 
 def login_page():
-    st.set_page_config(page_title="Rugg Dashboard 🚀", page_icon="🦄", layout="centered")
+    st.set_page_config(page_title="february Launch 🚀", page_icon="🦄", layout="centered")
     apply_custom_styles()
     
     # Initialize session state
