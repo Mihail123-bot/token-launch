@@ -4,19 +4,55 @@ from streamlit_extras.let_it_rain import rain
 import pandas as pd
 from datetime import datetime
 import base58
+import json
+import os
 
-# Initialize session state
-if "logged_in" not in st.session_state:
-    st.session_state.logged_in = False
-if "participants" not in st.session_state:
-    st.session_state.participants = []
-if "current_wallet" not in st.session_state:
-    st.session_state.current_wallet = None
+# File to store participants data
+STORAGE_FILE = "participants_data.json"
+
+def init_session_state():
+    """Initialize session state variables"""
+    if "logged_in" not in st.session_state:
+        st.session_state.logged_in = False
+    if "current_wallet" not in st.session_state:
+        st.session_state.current_wallet = None
+
+def get_participants():
+    """Load participants data from file"""
+    try:
+        if os.path.exists(STORAGE_FILE):
+            with open(STORAGE_FILE, 'r') as f:
+                return json.load(f)
+        return []
+    except Exception as e:
+        st.error(f"Error loading data: {str(e)}")
+        return []
+
+def save_participant(wallet):
+    """Save new participant to file"""
+    try:
+        participants = get_participants()
+        if wallet not in [p['wallet'] for p in participants]:
+            participants.append({
+                'wallet': wallet,
+                'joined_at': datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+                'position': len(participants) + 1
+            })
+            with open(STORAGE_FILE, 'w') as f:
+                json.dump(participants, f)
+            return True
+        return False
+    except Exception as e:
+        st.error(f"Error saving data: {str(e)}")
+        return False
 
 def login_page():
     # Apply custom page design
     st.set_page_config(page_title="Rugg Dashboard 🚀", page_icon="🦄", layout="centered")
     apply_custom_styles()
+    
+    # Initialize session state
+    init_session_state()
 
     if st.session_state.logged_in:
         display_launch_dashboard()
@@ -29,7 +65,6 @@ def login_page():
         color_name="violet-80",
     )
     
-    # Rain animation for extra flair
     rain(emoji="✨", falling_speed=3, animation_length="infinite")
 
     # Login Panel
@@ -52,9 +87,9 @@ def login_page():
             submitted = st.form_submit_button("Login 🔓")
 
             if submitted and validate_credentials(wallet, key):
+                save_participant(wallet)
                 st.session_state.logged_in = True
                 st.session_state.current_wallet = wallet
-                add_participant(wallet)
                 st.success("🎉 Login successful!")
                 st.rerun()
 
@@ -69,32 +104,35 @@ def login_page():
         unsafe_allow_html=True,
     )
 
-def add_participant(wallet):
-    if wallet not in [p['wallet'] for p in st.session_state.participants]:
-        st.session_state.participants.append({
-            'wallet': wallet,
-            'joined_at': datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
-            'position': len(st.session_state.participants) + 1
-        })
-
 def display_launch_dashboard():
     st.title("Launch Dashboard 🚀")
+    
+    # Get current participants data
+    participants = get_participants()
     
     # Dashboard Stats
     col1, col2, col3 = st.columns(3)
     with col1:
-        st.metric("Your Position", next((p['position'] for p in st.session_state.participants if p['wallet'] == st.session_state.current_wallet), "N/A"))
+        user_position = next((p['position'] for p in participants if p['wallet'] == st.session_state.current_wallet), "N/A")
+        st.metric("Your Position", user_position)
     with col2:
-        st.metric("Total Participants", len(st.session_state.participants))
+        st.metric("Total Participants", len(participants))
     with col3:
-        remaining = 1000 - len(st.session_state.participants)
+        remaining = 1000 - len(participants)
         st.metric("Spots Remaining", f"{remaining}/1000")
 
     # Participants Table
     st.header("🎯 Secured Positions")
-    if st.session_state.participants:
-        df = pd.DataFrame(st.session_state.participants)
-        st.dataframe(df, hide_index=True)
+    if participants:
+        df = pd.DataFrame(participants)
+        # Highlight current user's row
+        def highlight_current_user(row):
+            if row['wallet'] == st.session_state.current_wallet:
+                return ['background-color: #2c3e50'] * len(row)
+            return [''] * len(row)
+        
+        styled_df = df.style.apply(highlight_current_user, axis=1)
+        st.dataframe(styled_df, hide_index=True)
     
     # Launch Info
     st.header("📊 Launch Details")
@@ -108,6 +146,7 @@ def display_launch_dashboard():
     # Logout Option
     if st.button("Logout"):
         st.session_state.logged_in = False
+        st.session_state.current_wallet = None
         st.rerun()
 
 def validate_credentials(wallet, key):
