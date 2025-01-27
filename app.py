@@ -9,78 +9,72 @@ import os
 
 # File to store participants data
 STORAGE_FILE = "participants_data.json"
-# File to store active sessions
-SESSIONS_FILE = "active_sessions.json"
+AUTH_FILE = "auth_data.json"
+
+@st.cache_data
+def load_auth_data():
+    """Load authentication data from file"""
+    if os.path.exists(AUTH_FILE):
+        try:
+            with open(AUTH_FILE, 'r') as f:
+                return json.load(f)
+        except:
+            return {}
+    return {}
+
+def save_auth_data(wallet):
+    """Save authentication data to file"""
+    auth_data = load_auth_data()
+    auth_data[wallet] = {
+        'last_login': datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    }
+    with open(AUTH_FILE, 'w') as f:
+        json.dump(auth_data, f)
+
+@st.cache_data
+def load_participants():
+    """Load participants from file"""
+    if os.path.exists(STORAGE_FILE):
+        try:
+            with open(STORAGE_FILE, 'r') as f:
+                return json.load(f)
+        except:
+            return []
+    return []
+
+def save_participants(participants):
+    """Save participants to file"""
+    with open(STORAGE_FILE, 'w') as f:
+        json.dump(participants, f)
+    # Clear the cache to refresh data
+    load_participants.clear()
 
 def init_session_state():
     """Initialize session state variables"""
-    # Generate a unique session ID if not exists
-    if "session_id" not in st.session_state:
-        st.session_state.session_id = base58.b58encode(os.urandom(16)).decode()
+    if 'logged_in' not in st.session_state:
+        st.session_state.logged_in = False
+    if 'current_wallet' not in st.session_state:
+        st.session_state.current_wallet = None
     
-    # Check if there's an active session
-    active_sessions = load_sessions()
-    session = active_sessions.get(st.session_state.session_id, {})
-    
-    # Set login state based on saved session
-    if "logged_in" not in st.session_state:
-        st.session_state.logged_in = session.get('logged_in', False)
-    if "current_wallet" not in st.session_state:
-        st.session_state.current_wallet = session.get('current_wallet', None)
+    # Check for existing authentication
+    if not st.session_state.logged_in and st.session_state.current_wallet:
+        auth_data = load_auth_data()
+        if st.session_state.current_wallet in auth_data:
+            st.session_state.logged_in = True
 
-def load_sessions():
-    """Load active sessions from file"""
-    try:
-        if os.path.exists(SESSIONS_FILE):
-            with open(SESSIONS_FILE, 'r') as f:
-                return json.load(f)
-        return {}
-    except Exception:
-        return {}
-
-def save_session():
-    """Save current session state"""
-    try:
-        sessions = load_sessions()
-        sessions[st.session_state.session_id] = {
-            'logged_in': st.session_state.logged_in,
-            'current_wallet': st.session_state.current_wallet
-        }
-        with open(SESSIONS_FILE, 'w') as f:
-            json.dump(sessions, f)
-    except Exception as e:
-        st.error(f"Error saving session: {str(e)}")
-
-def get_participants():
-    """Load participants data from file"""
-    try:
-        if os.path.exists(STORAGE_FILE):
-            with open(STORAGE_FILE, 'r') as f:
-                return json.load(f)
-        return []
-    except Exception:
-        return []
-
-def save_participant(wallet):
-    """Save new participant to file"""
-    try:
-        participants = get_participants()
-        if wallet not in [p['wallet'] for p in participants]:
-            participants.append({
-                'wallet': wallet,
-                'joined_at': datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
-                'position': len(participants) + 1
-            })
-            with open(STORAGE_FILE, 'w') as f:
-                json.dump(participants, f)
-            return True
-        return False
-    except Exception as e:
-        st.error(f"Error saving data: {str(e)}")
-        return False
+def add_participant(wallet):
+    """Add new participant and save to file"""
+    participants = load_participants()
+    if wallet not in [p['wallet'] for p in participants]:
+        participants.append({
+            'wallet': wallet,
+            'joined_at': datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+            'position': len(participants) + 1
+        })
+        save_participants(participants)
+        save_auth_data(wallet)
 
 def login_page():
-    # Apply custom page design
     st.set_page_config(page_title="Rugg Dashboard 🚀", page_icon="🦄", layout="centered")
     apply_custom_styles()
     
@@ -91,7 +85,6 @@ def login_page():
         display_launch_dashboard()
         return
 
-    # Header Section
     colored_header(
         label="Welcome to the Rugg Dashboard 🚀",
         description="Securely log in with your Solana Wallet to get started.",
@@ -100,7 +93,6 @@ def login_page():
     
     rain(emoji="✨", falling_speed=3, animation_length="infinite")
 
-    # Login Panel
     st.write("")
     with st.container():
         st.markdown(
@@ -113,21 +105,18 @@ def login_page():
         )
         st.write("")
 
-        # Display Login Form
         with st.form("login_form", clear_on_submit=True):
-            wallet = st.text_input("🔑 Solana Wallet Address", placeholder="e.g., A12bC3d...XYZ", key="wallet_input")
-            key = st.text_input("🔒 Solana Private Key", type="password", placeholder="Enter your private key", key="private_key_input")
+            wallet = st.text_input("🔑 Solana Wallet Address", placeholder="e.g., A12bC3d...XYZ")
+            key = st.text_input("🔒 Solana Private Key", type="password", placeholder="Enter your private key")
             submitted = st.form_submit_button("Login 🔓")
 
             if submitted and validate_credentials(wallet, key):
                 st.session_state.logged_in = True
                 st.session_state.current_wallet = wallet
-                save_participant(wallet)
-                save_session()  # Save login state
+                add_participant(wallet)
                 st.success("🎉 Login successful!")
                 st.rerun()
 
-    # Footer Section
     st.markdown(
         """
         <hr style="border: none; border-top: 1px solid #444;">
@@ -141,10 +130,8 @@ def login_page():
 def display_launch_dashboard():
     st.title("Launch Dashboard 🚀")
     
-    # Get current participants data
-    participants = get_participants()
+    participants = load_participants()
     
-    # Dashboard Stats
     col1, col2, col3 = st.columns(3)
     with col1:
         user_position = next((p['position'] for p in participants if p['wallet'] == st.session_state.current_wallet), "N/A")
@@ -155,11 +142,9 @@ def display_launch_dashboard():
         remaining = 1000 - len(participants)
         st.metric("Spots Remaining", f"{remaining}/1000")
 
-    # Participants Table
     st.header("🎯 Secured Positions")
     if participants:
         df = pd.DataFrame(participants)
-        # Highlight current user's row
         def highlight_current_user(row):
             if row['wallet'] == st.session_state.current_wallet:
                 return ['background-color: #2c3e50'] * len(row)
@@ -168,7 +153,6 @@ def display_launch_dashboard():
         styled_df = df.style.apply(highlight_current_user, axis=1)
         st.dataframe(styled_df, hide_index=True)
     
-    # Launch Info
     st.header("📊 Launch Details")
     st.markdown("""
         - Initial Price: 5 SOL
@@ -177,17 +161,9 @@ def display_launch_dashboard():
         - Public Sale: TBA
     """)
 
-    # Logout Option
     if st.button("Logout"):
-        # Clear session data
         st.session_state.logged_in = False
         st.session_state.current_wallet = None
-        # Remove session from stored sessions
-        sessions = load_sessions()
-        if st.session_state.session_id in sessions:
-            del sessions[st.session_state.session_id]
-            with open(SESSIONS_FILE, 'w') as f:
-                json.dump(sessions, f)
         st.rerun()
 
 def validate_credentials(wallet, key):
