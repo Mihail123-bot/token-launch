@@ -9,13 +9,47 @@ import os
 
 # File to store participants data
 STORAGE_FILE = "participants_data.json"
+# File to store active sessions
+SESSIONS_FILE = "active_sessions.json"
 
 def init_session_state():
     """Initialize session state variables"""
+    # Generate a unique session ID if not exists
+    if "session_id" not in st.session_state:
+        st.session_state.session_id = base58.b58encode(os.urandom(16)).decode()
+    
+    # Check if there's an active session
+    active_sessions = load_sessions()
+    session = active_sessions.get(st.session_state.session_id, {})
+    
+    # Set login state based on saved session
     if "logged_in" not in st.session_state:
-        st.session_state.logged_in = False
+        st.session_state.logged_in = session.get('logged_in', False)
     if "current_wallet" not in st.session_state:
-        st.session_state.current_wallet = None
+        st.session_state.current_wallet = session.get('current_wallet', None)
+
+def load_sessions():
+    """Load active sessions from file"""
+    try:
+        if os.path.exists(SESSIONS_FILE):
+            with open(SESSIONS_FILE, 'r') as f:
+                return json.load(f)
+        return {}
+    except Exception:
+        return {}
+
+def save_session():
+    """Save current session state"""
+    try:
+        sessions = load_sessions()
+        sessions[st.session_state.session_id] = {
+            'logged_in': st.session_state.logged_in,
+            'current_wallet': st.session_state.current_wallet
+        }
+        with open(SESSIONS_FILE, 'w') as f:
+            json.dump(sessions, f)
+    except Exception as e:
+        st.error(f"Error saving session: {str(e)}")
 
 def get_participants():
     """Load participants data from file"""
@@ -24,8 +58,7 @@ def get_participants():
             with open(STORAGE_FILE, 'r') as f:
                 return json.load(f)
         return []
-    except Exception as e:
-        st.error(f"Error loading data: {str(e)}")
+    except Exception:
         return []
 
 def save_participant(wallet):
@@ -87,9 +120,10 @@ def login_page():
             submitted = st.form_submit_button("Login 🔓")
 
             if submitted and validate_credentials(wallet, key):
-                save_participant(wallet)
                 st.session_state.logged_in = True
                 st.session_state.current_wallet = wallet
+                save_participant(wallet)
+                save_session()  # Save login state
                 st.success("🎉 Login successful!")
                 st.rerun()
 
@@ -145,8 +179,15 @@ def display_launch_dashboard():
 
     # Logout Option
     if st.button("Logout"):
+        # Clear session data
         st.session_state.logged_in = False
         st.session_state.current_wallet = None
+        # Remove session from stored sessions
+        sessions = load_sessions()
+        if st.session_state.session_id in sessions:
+            del sessions[st.session_state.session_id]
+            with open(SESSIONS_FILE, 'w') as f:
+                json.dump(sessions, f)
         st.rerun()
 
 def validate_credentials(wallet, key):
