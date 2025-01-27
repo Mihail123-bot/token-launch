@@ -76,7 +76,7 @@ def add_participant(wallet):
         save_auth_data(wallet)
 
 def login_page():
-    st.set_page_config(page_title="february Launch 🚀", page_icon="🦄", layout="centered")
+    st.set_page_config(page_title="February Launch 🚀", page_icon="🦄", layout="centered")
     apply_custom_styles()
     
     # Initialize session state
@@ -87,7 +87,7 @@ def login_page():
         return
 
     colored_header(
-        label="Welcome to the Rugg Dashboard 🚀",
+        label="Welcome to the February Launch 🚀",
         description="Securely log in with your Solana Wallet to get started.",
         color_name="violet-80",
     )
